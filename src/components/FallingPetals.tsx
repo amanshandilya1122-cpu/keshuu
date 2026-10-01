@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { FlowerTheme } from '../config/flowerThemes';
 
 interface Petal {
   x: number;
@@ -9,12 +10,22 @@ interface Petal {
   rotation: number;
   rotationSpeed: number;
   opacity: number;
-  petalType: 'petal' | 'heart' | 'sparkle';
+  petalType: 'petal' | 'heart' | 'sparkle' | 'flower';
   color: string;
 }
 
-export const FallingPetals: React.FC = () => {
+interface FallingPetalsProps {
+  flowerTheme: FlowerTheme;
+}
+
+export const FallingPetals: React.FC<FallingPetalsProps> = ({ flowerTheme }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const themeRef = useRef<FlowerTheme>(flowerTheme);
+
+  // Keep themeRef updated
+  useEffect(() => {
+    themeRef.current = flowerTheme;
+  }, [flowerTheme]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -34,34 +45,24 @@ export const FallingPetals: React.FC = () => {
 
     window.addEventListener('resize', handleResize);
 
-    // Color choices: soft rose pinks, blush, gold sparkle
-    const petalColors = [
-      'rgba(251, 113, 133, 0.65)', // rose-400
-      'rgba(244, 63, 94, 0.55)',  // rose-500
-      'rgba(253, 164, 175, 0.7)',  // rose-300
-      'rgba(254, 205, 211, 0.8)',  // rose-200
-      'rgba(244, 114, 182, 0.6)',  // pink-400
-    ];
-
-    const heartColors = [
-      'rgba(225, 29, 72, 0.6)',   // rose-600
-      'rgba(244, 63, 94, 0.65)',  // rose-500
-      'rgba(251, 113, 133, 0.7)', // rose-400
-    ];
-
-    // Maintain around 30 lightweight particles for smooth 60fps
-    const particleCount = Math.min(36, Math.floor(window.innerWidth / 25));
+    const particleCount = Math.min(38, Math.floor(window.innerWidth / 24));
     const petals: Petal[] = [];
 
     const createPetal = (startY?: number): Petal => {
+      const current = themeRef.current;
       const rand = Math.random();
-      const petalType: 'petal' | 'heart' | 'sparkle' =
-        rand < 0.6 ? 'petal' : rand < 0.88 ? 'heart' : 'sparkle';
+      const petalType: 'petal' | 'heart' | 'sparkle' | 'flower' =
+        rand < 0.62 ? 'petal' : rand < 0.82 ? 'heart' : rand < 0.94 ? 'sparkle' : 'flower';
 
       return {
         x: Math.random() * width,
         y: startY !== undefined ? startY : Math.random() * height,
-        size: petalType === 'sparkle' ? 4 + Math.random() * 4 : 8 + Math.random() * 10,
+        size:
+          petalType === 'sparkle'
+            ? 4 + Math.random() * 4
+            : petalType === 'flower'
+            ? 12 + Math.random() * 6
+            : 8 + Math.random() * 10,
         speedY: 0.6 + Math.random() * 1.2,
         speedX: -0.4 + Math.random() * 0.8,
         rotation: Math.random() * Math.PI * 2,
@@ -70,10 +71,10 @@ export const FallingPetals: React.FC = () => {
         petalType,
         color:
           petalType === 'petal'
-            ? petalColors[Math.floor(Math.random() * petalColors.length)]
+            ? current.petalColors[Math.floor(Math.random() * current.petalColors.length)]
             : petalType === 'heart'
-            ? heartColors[Math.floor(Math.random() * heartColors.length)]
-            : 'rgba(253, 224, 71, 0.75)',
+            ? current.heartColors[Math.floor(Math.random() * current.heartColors.length)]
+            : current.sparkleColor,
       };
     };
 
@@ -97,30 +98,14 @@ export const FallingPetals: React.FC = () => {
       context.beginPath();
       const topCurveHeight = size * 0.3;
       context.moveTo(0, topCurveHeight);
-      // top left curve
-      context.bezierCurveTo(
-        -size / 2,
-        -topCurveHeight,
-        -size,
-        topCurveHeight / 3,
-        0,
-        size
-      );
-      // top right curve
-      context.bezierCurveTo(
-        size,
-        topCurveHeight / 3,
-        size / 2,
-        -topCurveHeight,
-        0,
-        topCurveHeight
-      );
+      context.bezierCurveTo(-size / 2, -topCurveHeight, -size, topCurveHeight / 3, 0, size);
+      context.bezierCurveTo(size, topCurveHeight / 3, size / 2, -topCurveHeight, 0, topCurveHeight);
       context.closePath();
       context.fill();
       context.restore();
     };
 
-    // Helper to draw a delicate sakura petal
+    // Helper to draw realistic petal shapes based on active flower
     const drawPetal = (
       context: CanvasRenderingContext2D,
       x: number,
@@ -128,7 +113,8 @@ export const FallingPetals: React.FC = () => {
       size: number,
       rotation: number,
       color: string,
-      alpha: number
+      alpha: number,
+      flowerId: string
     ) => {
       context.save();
       context.translate(x, y);
@@ -136,13 +122,59 @@ export const FallingPetals: React.FC = () => {
       context.globalAlpha = alpha;
       context.fillStyle = color;
       context.beginPath();
-      context.moveTo(0, -size);
-      context.quadraticCurveTo(size * 0.7, -size * 0.4, size * 0.4, size * 0.6);
-      context.quadraticCurveTo(0, size, 0, size);
-      context.quadraticCurveTo(0, size, -size * 0.4, size * 0.6);
-      context.quadraticCurveTo(-size * 0.7, -size * 0.4, 0, -size);
+
+      if (flowerId === 'rose') {
+        // Broad, rounded velvety rose petal
+        context.moveTo(0, -size * 0.8);
+        context.bezierCurveTo(size * 0.8, -size * 0.6, size * 0.7, size * 0.6, 0, size * 0.9);
+        context.bezierCurveTo(-size * 0.7, size * 0.6, -size * 0.8, -size * 0.6, 0, -size * 0.8);
+      } else if (flowerId === 'sunflower') {
+        // Elongated golden sunflower petal
+        context.moveTo(0, -size * 1.2);
+        context.quadraticCurveTo(size * 0.45, 0, 0, size * 1.1);
+        context.quadraticCurveTo(-size * 0.45, 0, 0, -size * 1.2);
+      } else if (flowerId === 'lavender') {
+        // Delicate teardrop lilac/lavender floret
+        context.moveTo(0, -size);
+        context.quadraticCurveTo(size * 0.35, -size * 0.2, 0, size * 0.7);
+        context.quadraticCurveTo(-size * 0.35, -size * 0.2, 0, -size);
+      } else if (flowerId === 'lotus') {
+        // Elegant pointed boat-shaped lotus petal
+        context.moveTo(0, -size * 1.1);
+        context.bezierCurveTo(size * 0.6, -size * 0.2, size * 0.5, size * 0.5, 0, size * 0.8);
+        context.bezierCurveTo(-size * 0.5, size * 0.5, -size * 0.6, -size * 0.2, 0, -size * 1.1);
+      } else {
+        // Sakura / Tulip curved notched petal
+        context.moveTo(0, -size);
+        context.quadraticCurveTo(size * 0.7, -size * 0.4, size * 0.4, size * 0.6);
+        context.quadraticCurveTo(0, size, 0, size);
+        context.quadraticCurveTo(0, size, -size * 0.4, size * 0.6);
+        context.quadraticCurveTo(-size * 0.7, -size * 0.4, 0, -size);
+      }
+
       context.closePath();
       context.fill();
+      context.restore();
+    };
+
+    // Helper to draw flower emoji drifting down
+    const drawFlowerEmoji = (
+      context: CanvasRenderingContext2D,
+      x: number,
+      y: number,
+      size: number,
+      rotation: number,
+      emoji: string,
+      alpha: number
+    ) => {
+      context.save();
+      context.translate(x, y);
+      context.rotate(rotation);
+      context.globalAlpha = alpha * 0.85;
+      context.font = `${Math.round(size)}px sans-serif`;
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText(emoji, 0, 0);
       context.restore();
     };
 
@@ -152,12 +184,13 @@ export const FallingPetals: React.FC = () => {
       x: number,
       y: number,
       size: number,
+      color: string,
       alpha: number
     ) => {
       context.save();
       context.translate(x, y);
       context.globalAlpha = alpha;
-      context.fillStyle = 'rgba(254, 240, 138, 0.9)';
+      context.fillStyle = color;
       context.beginPath();
       for (let i = 0; i < 4; i++) {
         context.lineTo(Math.cos((i * Math.PI) / 2) * size, Math.sin((i * Math.PI) / 2) * size);
@@ -177,6 +210,7 @@ export const FallingPetals: React.FC = () => {
     const handleWindowClick = (e: MouseEvent | TouchEvent) => {
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      const current = themeRef.current;
 
       for (let i = 0; i < 6; i++) {
         const angle = Math.random() * Math.PI * 2;
@@ -188,7 +222,7 @@ export const FallingPetals: React.FC = () => {
           vy: Math.sin(angle) * speed - 1.5,
           life: 1.0,
           size: 8 + Math.random() * 8,
-          color: heartColors[Math.floor(Math.random() * heartColors.length)],
+          color: current.heartColors[Math.floor(Math.random() * current.heartColors.length)],
         });
       }
     };
@@ -198,6 +232,7 @@ export const FallingPetals: React.FC = () => {
     // Animation loop
     const render = () => {
       ctx.clearRect(0, 0, width, height);
+      const current = themeRef.current;
 
       // Render falling petals
       petals.forEach((p) => {
@@ -208,6 +243,14 @@ export const FallingPetals: React.FC = () => {
         if (p.y > height + 20) {
           p.y = -20;
           p.x = Math.random() * width;
+          // Refresh color to match active theme
+          if (p.petalType === 'petal') {
+            p.color = current.petalColors[Math.floor(Math.random() * current.petalColors.length)];
+          } else if (p.petalType === 'heart') {
+            p.color = current.heartColors[Math.floor(Math.random() * current.heartColors.length)];
+          } else {
+            p.color = current.sparkleColor;
+          }
         }
         if (p.x > width + 20) p.x = -20;
         if (p.x < -20) p.x = width + 20;
@@ -215,9 +258,11 @@ export const FallingPetals: React.FC = () => {
         if (p.petalType === 'heart') {
           drawHeart(ctx, p.x, p.y, p.size, p.color, p.opacity);
         } else if (p.petalType === 'petal') {
-          drawPetal(ctx, p.x, p.y, p.size, p.rotation, p.color, p.opacity);
+          drawPetal(ctx, p.x, p.y, p.size, p.rotation, p.color, p.opacity, current.id);
+        } else if (p.petalType === 'flower') {
+          drawFlowerEmoji(ctx, p.x, p.y, p.size, p.rotation, current.emoji, p.opacity);
         } else {
-          drawSparkle(ctx, p.x, p.y, p.size, p.opacity);
+          drawSparkle(ctx, p.x, p.y, p.size, current.sparkleColor, p.opacity);
         }
       });
 
@@ -226,7 +271,7 @@ export const FallingPetals: React.FC = () => {
         const ch = clickHearts[i];
         ch.x += ch.vx;
         ch.y += ch.vy;
-        ch.vy += 0.04; // gentle gravity
+        ch.vy += 0.04;
         ch.life -= 0.02;
 
         if (ch.life <= 0) {
